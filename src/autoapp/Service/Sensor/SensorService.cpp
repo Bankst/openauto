@@ -222,7 +222,7 @@ namespace f1x::openauto::autoapp::service::sensor {
 
   void SensorService::sensorPolling() {
     OPENAUTO_LOG(info) << "[SensorService] sensorPolling()";
-    if (!this->stopPolling.load(std::memory_order_acquire)) {
+    if (!this->stopPolling.load(std::memory_order_acquire) && this->gpsEnabled_) {
       strand_.dispatch([this, self = this->shared_from_this()]() {
         // Check stopPolling again inside the dispatched handler to catch late stop() calls
         if (this->stopPolling.load(std::memory_order_acquire)) {
