@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.14)
+cmake_minimum_required(VERSION 3.21)
 
 project(openauto CXX)
 
@@ -9,8 +9,6 @@ message(STATUS "OpenAuto")
 string(TIMESTAMP OPENAUTO_BUILD_YEAR "%Y" UTC)
 string(TIMESTAMP OPENAUTO_BUILD_MONTH "%m" UTC)
 string(TIMESTAMP OPENAUTO_BUILD_DAY "%d" UTC)
-
-option(NOPI "Build for Non Raspberry Pi" OFF)
 
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
@@ -71,16 +69,7 @@ if (WIN32)
     set(WINSOCK2_LIBRARIES "ws2_32")
 endif (WIN32)
 
-if (NOPI)
-    message(STATUS "Configuring for Non-Raspberry Pi")
-else()
-    message(STATUS "Configuring for RaspberryPi")
-    add_definitions(-DUSE_OMX -DOMX_SKIP64BIT -DRASPBERRYPI3)
-    set(BCM_HOST_LIBRARIES "/opt/vc/lib/libbcm_host.so")
-    set(BCM_HOST_INCLUDE_DIRS "/opt/vc/include")
-    set(ILCLIENT_INCLUDE_DIRS "/opt/vc/src/hello_pi/libs/ilclient")
-    set(ILCLIENT_LIBRARIES "/opt/vc/src/hello_pi/libs/ilclient/libilclient.a;/opt/vc/lib/libvcos.so;/opt/vc/lib/libvcilcs.a;/opt/vc/lib/libvchiq_arm.so")
-endif ()
+message(STATUS "Configuring for Non-Raspberry Pi")
 
 # Building on a Mac requires Abseil
 if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")  # macOS
@@ -108,16 +97,13 @@ else ()
     set(PROTOBUF_INCLUDE_DIR ${Protobuf_INCLUDE_DIR})
 endif ()
 
-find_package(aap_protobuf)
-find_package(aasdk)
-
-if(NOT AAP_PROTOBUF_FOUND OR NOT AASDK_FOUND)
-message(FATAL_ERROR "aap_protobuf or aasdk not found. Please build and install AASDK first.")
-endif()
-
-find_package(Boost REQUIRED COMPONENTS system log_setup log OPTIONAL_COMPONENTS unit_test_framework)
-find_package(libusb-1.0 REQUIRED)
+set(Qt5_DIR "/usr/local/qt5")
 find_package(Qt5 COMPONENTS DBus Multimedia MultimediaWidgets Bluetooth Network)
+
+find_package(aap_protobuf REQUIRED)
+find_package(aasdk REQUIRED)
+find_package(Boost CONFIG REQUIRED COMPONENTS system log_setup log OPTIONAL_COMPONENTS unit_test_framework)
+find_package(libusb-1.0 REQUIRED)
 find_package(OpenSSL REQUIRED)
 find_package(rtaudio REQUIRED)
 find_package(taglib REQUIRED)
