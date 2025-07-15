@@ -20,6 +20,7 @@
 #include <f1x/openauto/autoapp/UI/MainWindow.hpp>
 #include <QFileInfo>
 #include <QFile>
+#include "tvariant.h"
 #include "ui_mainwindow.h"
 #include <QTimer>
 #include <QDateTime>
@@ -1536,10 +1537,10 @@ void f1x::openauto::autoapp::ui::MainWindow::scanFiles()
                     TagLib::FileRef file((this->musicfolder + "/" + this->albumfolder + "/" + filename).toUtf8(),true);
                     TagLib::String artist_string = file.tag()->artist();
                     TagLib::String title_string = file.tag()->title();
-                    unsigned int track_string = file.tag()->track();
+                    TagLib::Variant track_string = file.tag()->track();
                     QString artistid3 = QString::fromStdWString(artist_string.toCWString());
                     QString titleid3 = QString::fromStdWString(title_string.toCWString());
-                    QString trackid3 = QString::number(track_string);
+                    QString trackid3 = QString::number(track_string.toUInt());
                     int tracklength = trackid3.length();
                     if (tracklength < 2) {
                         trackid3 = "0" + trackid3;
