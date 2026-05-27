@@ -42,6 +42,19 @@ namespace f1x::openauto::btservice {
         configuration_(std::move(configuration)) {
     OPENAUTO_LOG(info) << "[AndroidBluetoothServer::AndroidBluetoothServer] Initialising";
 
+    // Cache current WiFi SSID at startup (avoids blocking the RFCOMM callback)
+    QProcess nmcli;
+    nmcli.start("nmcli", {"-t", "-f", "active,ssid", "dev", "wifi"});
+    nmcli.waitForFinished(3000);
+    QString nmOutput = nmcli.readAllStandardOutput().trimmed();
+    for (const auto& line : nmOutput.split('\n')) {
+      if (line.startsWith("yes:")) {
+        cachedSsid_ = line.mid(4);
+        OPENAUTO_LOG(info) << "[AndroidBluetoothServer] cached WiFi SSID: " << cachedSsid_.toStdString();
+        break;
+      }
+    }
+
     connect(rfcommServer_.get(), &QBluetoothServer::newConnection, this,
             &AndroidBluetoothServer::onClientConnected);
 
@@ -170,21 +183,9 @@ namespace f1x::openauto::btservice {
     QString password = configuration_->getParamFromFile("/etc/hostapd/hostapd.conf", "wpa_passphrase");
 
     if (ssid.isEmpty()) {
-      // Same-network fallback: tell phone we're on its current WiFi.
-      // Get SSID from the active WiFi connection.
-      OPENAUTO_LOG(info) << "[AndroidBluetoothServer] no hostapd.conf — same-network mode";
-      QProcess nmcli;
-      nmcli.start("nmcli", {"-t", "-f", "active,ssid", "dev", "wifi"});
-      nmcli.waitForFinished(3000);
-      QString nmOutput = nmcli.readAllStandardOutput().trimmed();
-      for (const auto& line : nmOutput.split('\n')) {
-        if (line.startsWith("yes:")) {
-          ssid = line.mid(4);
-          break;
-        }
-      }
-      OPENAUTO_LOG(info) << "[AndroidBluetoothServer] current WiFi SSID: " << ssid.toStdString();
-      response.set_ssid(ssid.toStdString());
+      // Same-network fallback: use cached WiFi SSID
+      OPENAUTO_LOG(info) << "[AndroidBluetoothServer] no hostapd.conf — same-network mode, SSID=" << cachedSsid_.toStdString();
+      response.set_ssid(cachedSsid_.toStdString());
       response.set_password("");
       response.set_access_point_type(aap_protobuf::service::wifiprojection::message::AccessPointType::STATIC);
     } else {

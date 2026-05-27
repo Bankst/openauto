@@ -57,6 +57,7 @@ namespace f1x::openauto::btservice {
     void readSocket();
 
     QByteArray buffer;
+    QString cachedSsid_;
 
     void handleWifiInfoRequest(QByteArray &buffer, uint16_t length);
 
