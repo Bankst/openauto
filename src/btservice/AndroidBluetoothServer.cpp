@@ -42,17 +42,23 @@ namespace f1x::openauto::btservice {
         configuration_(std::move(configuration)) {
     OPENAUTO_LOG(info) << "[AndroidBluetoothServer::AndroidBluetoothServer] Initialising";
 
-    // Cache current WiFi SSID at startup (avoids blocking the RFCOMM callback)
-    QProcess nmcli;
-    nmcli.start("nmcli", {"-t", "-f", "active,ssid", "dev", "wifi"});
-    nmcli.waitForFinished(3000);
-    QString nmOutput = nmcli.readAllStandardOutput().trimmed();
-    for (const auto& line : nmOutput.split('\n')) {
-      if (line.startsWith("yes:")) {
-        cachedSsid_ = line.mid(4);
-        OPENAUTO_LOG(info) << "[AndroidBluetoothServer] cached WiFi SSID: " << cachedSsid_.toStdString();
-        break;
+    // Cache current WiFi SSID at startup (avoids blocking the RFCOMM callback).
+    // Use synchronous QProcess to ensure it completes before we proceed.
+    {
+      QProcess nmcli;
+      nmcli.setProcessChannelMode(QProcess::MergedChannels);
+      nmcli.start("nmcli", {"-t", "-f", "active,ssid", "dev", "wifi"});
+      if (nmcli.waitForStarted(2000) && nmcli.waitForFinished(5000)) {
+        QString nmOutput = nmcli.readAllStandardOutput().trimmed();
+        for (const auto& line : nmOutput.split('\n')) {
+          if (line.startsWith("yes:")) {
+            cachedSsid_ = line.mid(4);
+            break;
+          }
+        }
       }
+      OPENAUTO_LOG(info) << "[AndroidBluetoothServer] cached WiFi SSID: "
+                         << (cachedSsid_.isEmpty() ? "(none)" : cachedSsid_.toStdString());
     }
 
     connect(rfcommServer_.get(), &QBluetoothServer::newConnection, this,
