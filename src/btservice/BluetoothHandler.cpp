@@ -56,6 +56,15 @@ namespace f1x::openauto::btservice {
     // TODO: Connect to any previously paired devices
   }
 
+  void BluetoothHandler::setWifiCredentials(const QString& ssid, const QString& password) {
+    auto* server = dynamic_cast<AndroidBluetoothServer*>(androidBluetoothServer_.get());
+    if (server) {
+      server->setCachedSsid(ssid);
+      server->setCachedPassword(password);
+      OPENAUTO_LOG(info) << "[BluetoothHandler] WiFi credentials set: ssid=" << ssid.toStdString();
+    }
+  }
+
   void BluetoothHandler::shutdownService() {
     OPENAUTO_LOG(info) << "[BluetoothHandler::shutdownService] Shutdown initiated";
     androidBluetoothService_->unregisterService();

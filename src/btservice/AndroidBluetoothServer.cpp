@@ -42,24 +42,7 @@ namespace f1x::openauto::btservice {
         configuration_(std::move(configuration)) {
     OPENAUTO_LOG(info) << "[AndroidBluetoothServer::AndroidBluetoothServer] Initialising";
 
-    // Cache current WiFi SSID at startup (avoids blocking the RFCOMM callback).
-    // Use synchronous QProcess to ensure it completes before we proceed.
-    {
-      QProcess nmcli;
-      nmcli.setProcessChannelMode(QProcess::MergedChannels);
-      nmcli.start("nmcli", {"-t", "-f", "active,ssid", "dev", "wifi"});
-      if (nmcli.waitForStarted(2000) && nmcli.waitForFinished(5000)) {
-        QString nmOutput = nmcli.readAllStandardOutput().trimmed();
-        for (const auto& line : nmOutput.split('\n')) {
-          if (line.startsWith("yes:")) {
-            cachedSsid_ = line.mid(4);
-            break;
-          }
-        }
-      }
-      OPENAUTO_LOG(info) << "[AndroidBluetoothServer] cached WiFi SSID: "
-                         << (cachedSsid_.isEmpty() ? "(none)" : cachedSsid_.toStdString());
-    }
+    // SSID injected via setCachedSsid() from AASessionController before start().
 
     connect(rfcommServer_.get(), &QBluetoothServer::newConnection, this,
             &AndroidBluetoothServer::onClientConnected);
@@ -194,9 +177,7 @@ namespace f1x::openauto::btservice {
       // with OPEN security so it doesn't try to re-authenticate.
       OPENAUTO_LOG(info) << "[AndroidBluetoothServer] same-network mode, SSID=" << cachedSsid_.toStdString();
       response.set_ssid(cachedSsid_.toStdString());
-      // TODO: replace with QML password prompt or WiFi Direct P2P-GO
-      const char* envPw = std::getenv("BANKS_AA_WIFI_PASSWORD");
-      response.set_password(envPw ? envPw : "");
+      response.set_password(cachedPassword_.toStdString());
       response.set_access_point_type(aap_protobuf::service::wifiprojection::message::AccessPointType::STATIC);
     } else {
       response.set_ssid(ssid.toStdString());

@@ -58,6 +58,11 @@ namespace f1x::openauto::btservice {
 
     QByteArray buffer;
     QString cachedSsid_;
+  public:
+    void setCachedSsid(const QString& ssid) { cachedSsid_ = ssid; }
+    void setCachedPassword(const QString& pw) { cachedPassword_ = pw; }
+  private:
+    QString cachedPassword_;
 
     void handleWifiInfoRequest(QByteArray &buffer, uint16_t length);
 

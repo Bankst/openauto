@@ -20,6 +20,7 @@ namespace f1x::openauto::btservice {
                      autoapp::configuration::IConfiguration::Pointer configuration);
 
     void shutdownService() override;
+    void setWifiCredentials(const QString& ssid, const QString& password);
 
   private slots:
     void onPairingDisplayPinCode(const QBluetoothAddress &address, QString pin);
