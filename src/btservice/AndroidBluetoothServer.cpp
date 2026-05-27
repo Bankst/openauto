@@ -164,14 +164,37 @@ namespace f1x::openauto::btservice {
 
     aap_protobuf::aaw::WifiInfoResponse response;
 
-    response.set_ssid(configuration_->getParamFromFile("/etc/hostapd/hostapd.conf", "ssid").toStdString());
-    response.set_password(
-        configuration_->getParamFromFile("/etc/hostapd/hostapd.conf", "wpa_passphrase").toStdString());
-    response.set_bssid(QNetworkInterface::interfaceFromName("wlan0").hardwareAddress().toStdString());
-    // TODO: AAP uses different values than WiFiProjection....
+    // Try hostapd config first (hotspot/P2P-GO mode)
+    QString ssid = configuration_->getParamFromFile("/etc/hostapd/hostapd.conf", "ssid");
+    QString password = configuration_->getParamFromFile("/etc/hostapd/hostapd.conf", "wpa_passphrase");
+
+    if (ssid.isEmpty()) {
+      // Same-network fallback: tell phone to use its existing connection.
+      // Send empty SSID with STATIC access point type — phone should
+      // skip WiFi join and go straight to TCP on the IP from WifiStartRequest.
+      OPENAUTO_LOG(info) << "[AndroidBluetoothServer] no hostapd.conf — same-network mode";
+      response.set_ssid("");
+      response.set_password("");
+      response.set_access_point_type(aap_protobuf::service::wifiprojection::message::AccessPointType::STATIC);
+    } else {
+      response.set_ssid(ssid.toStdString());
+      response.set_password(password.toStdString());
+      response.set_access_point_type(aap_protobuf::service::wifiprojection::message::AccessPointType::STATIC);
+    }
+
+    // BSSID from any active WiFi interface
+    for (const QNetworkInterface &iface : QNetworkInterface::allInterfaces()) {
+      if (iface.flags().testFlag(QNetworkInterface::IsUp) &&
+          !iface.flags().testFlag(QNetworkInterface::IsLoopBack) &&
+          !iface.hardwareAddress().isEmpty() &&
+          (iface.name().startsWith("wl") || iface.name().startsWith("p2p"))) {
+        response.set_bssid(iface.hardwareAddress().toStdString());
+        break;
+      }
+    }
+
     response.set_security_mode(
-        aap_protobuf::service::wifiprojection::message::WifiSecurityMode::WPA2_ENTERPRISE);
-    response.set_access_point_type(aap_protobuf::service::wifiprojection::message::AccessPointType::STATIC);
+        aap_protobuf::service::wifiprojection::message::WifiSecurityMode::WPA2_PERSONAL);
 
     sendMessage(response, 3);
   }
