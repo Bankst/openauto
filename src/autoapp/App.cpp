@@ -31,8 +31,11 @@ namespace f1x::openauto::autoapp {
       : ioService_(ioService), usbWrapper_(usbWrapper), tcpWrapper_(tcpWrapper), strand_(ioService_),
         androidAutoEntityFactory_(androidAutoEntityFactory), usbHub_(std::move(usbHub)),
         connectedAccessoriesEnumerator_(std::move(connectedAccessoriesEnumerator)),
-        acceptor_(ioService, boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), 5000)), isStopped_(false) {
-
+        acceptor_(ioService), isStopped_(false) {
+    acceptor_.open(boost::asio::ip::tcp::v4());
+    acceptor_.set_option(boost::asio::ip::tcp::acceptor::reuse_address(true));
+    acceptor_.bind(boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), 5000));
+    acceptor_.listen();
   }
 
   void App::waitForUSBDevice() {
@@ -120,17 +123,21 @@ namespace f1x::openauto::autoapp {
   }
 
   void App::aoapDeviceHandler(aasdk::usb::DeviceHandle deviceHandle) {
-    OPENAUTO_LOG(info) << "[App] Device connected.";
+    OPENAUTO_LOG(info) << "[App] USB device connected.";
 
     if (androidAutoEntity_ != nullptr) {
-      OPENAUTO_LOG(warning) << "[App] android auto entity is still running.";
-      return;
+      OPENAUTO_LOG(info) << "[App] Stopping existing session for USB priority.";
+      try { androidAutoEntity_->stop(); } catch (...) {
+        OPENAUTO_LOG(error) << "[App] aoapDeviceHandler: exception stopping existing entity";
+      }
+      try { androidAutoEntity_.reset(); } catch (...) {
+        OPENAUTO_LOG(error) << "[App] aoapDeviceHandler: exception resetting existing entity";
+      }
     }
 
     try {
-      // ignore autostart if exit to csng was used
       if (!disableAutostartEntity) {
-        OPENAUTO_LOG(info) << "[App] Start Android Auto allowed - let's go.";
+        OPENAUTO_LOG(info) << "[App] Starting USB Android Auto.";
         connectedAccessoriesEnumerator_->cancel();
 
         auto aoapDevice(aasdk::usb::AOAPDevice::create(usbWrapper_, ioService_, deviceHandle));
