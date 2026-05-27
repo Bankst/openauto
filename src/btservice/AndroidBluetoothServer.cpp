@@ -185,14 +185,20 @@ namespace f1x::openauto::btservice {
       response.set_access_point_type(aap_protobuf::service::wifiprojection::message::AccessPointType::STATIC);
     }
 
-    // BSSID from any active WiFi interface
-    for (const QNetworkInterface &iface : QNetworkInterface::allInterfaces()) {
-      if (iface.flags().testFlag(QNetworkInterface::IsUp) &&
-          !iface.flags().testFlag(QNetworkInterface::IsLoopBack) &&
-          !iface.hardwareAddress().isEmpty() &&
-          (iface.name().startsWith("wl") || iface.name().startsWith("p2p"))) {
-        response.set_bssid(iface.hardwareAddress().toStdString());
-        break;
+    // BSSID: use the AP's BSSID (not our local MAC) so the phone can verify
+    // it's on the same network. Read from cachedBssid_ set via setWifiCredentials.
+    if (!cachedBssid_.isEmpty()) {
+      response.set_bssid(cachedBssid_.toStdString());
+    } else {
+      // Fallback: local interface MAC (wrong but non-empty)
+      for (const QNetworkInterface &iface : QNetworkInterface::allInterfaces()) {
+        if (iface.flags().testFlag(QNetworkInterface::IsUp) &&
+            !iface.flags().testFlag(QNetworkInterface::IsLoopBack) &&
+            !iface.hardwareAddress().isEmpty() &&
+            (iface.name().startsWith("wl") || iface.name().startsWith("p2p"))) {
+          response.set_bssid(iface.hardwareAddress().toStdString());
+          break;
+        }
       }
     }
 

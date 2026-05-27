@@ -61,6 +61,41 @@ namespace f1x::openauto::btservice {
     if (server) {
       server->setCachedSsid(ssid);
       server->setCachedPassword(password);
+
+      // Get AP BSSID via iw — scan all wireless devs, find the connected one.
+      // "iw dev" lists all wireless interfaces; then "iw dev <name> link" shows AP BSSID.
+      FILE* fp = popen("iw dev 2>/dev/null | awk '/Interface/{print $2}'", "r");
+      if (fp) {
+        char ifbuf[64];
+        while (fgets(ifbuf, sizeof(ifbuf), fp)) {
+          std::string ifname(ifbuf);
+          while (!ifname.empty() && ifname.back() == '\n') ifname.pop_back();
+          if (ifname.find("p2p") != std::string::npos) continue;
+          std::string cmd = "iw dev " + ifname + " link 2>/dev/null";
+          FILE* fp2 = popen(cmd.c_str(), "r");
+          if (fp2) {
+            char buf[256];
+            while (fgets(buf, sizeof(buf), fp2)) {
+              std::string line(buf);
+              if (line.find("Connected to ") != std::string::npos) {
+                // "Connected to aa:bb:cc:dd:ee:ff (on wlp192s0)"
+                auto pos = line.find("Connected to ") + 13;
+                std::string bssid = line.substr(pos, 17);
+                // Uppercase to match standard format
+                for (auto& c : bssid) c = toupper(c);
+                server->setCachedBssid(QString::fromStdString(bssid));
+                OPENAUTO_LOG(info) << "[BluetoothHandler] AP BSSID: " << bssid;
+                pclose(fp2);
+                goto bssid_done;
+              }
+            }
+            pclose(fp2);
+          }
+        }
+        bssid_done:
+        pclose(fp);
+      }
+
       OPENAUTO_LOG(info) << "[BluetoothHandler] WiFi credentials set: ssid=" << ssid.toStdString();
     }
   }
