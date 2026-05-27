@@ -183,8 +183,12 @@ namespace f1x::openauto::autoapp {
 
   void
   App::handleNewClient(std::shared_ptr<boost::asio::ip::tcp::socket> socket, const boost::system::error_code &err) {
-    OPENAUTO_LOG(info) << "handleNewClient() - Handle WIFI Client Connection";
-    if (!err) {
+    if (err) {
+      OPENAUTO_LOG(error) << "handleNewClient() - TCP accept error: " << err.message();
+    } else {
+      auto remote = socket->remote_endpoint();
+      OPENAUTO_LOG(info) << "handleNewClient() - TCP client connected from "
+                         << remote.address().to_string() << ":" << remote.port();
       start(std::move(socket));
     }
   }

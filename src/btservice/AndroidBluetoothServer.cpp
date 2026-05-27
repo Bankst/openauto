@@ -77,7 +77,7 @@ namespace f1x::openauto::btservice {
 
   /// Call-Back for when Client Connected
   void AndroidBluetoothServer::onClientConnected() {
-    OPENAUTO_LOG(debug) << "[AndroidBluetoothServer::onClientConnected]";
+    OPENAUTO_LOG(info) << "[AndroidBluetoothServer::onClientConnected]";
     if (socket != nullptr) {
       socket->deleteLater();
     }
@@ -85,7 +85,7 @@ namespace f1x::openauto::btservice {
     socket = rfcommServer_->nextPendingConnection();
 
     if (socket != nullptr) {
-      OPENAUTO_LOG(debug) << "[AndroidBluetoothServer] rfcomm client connected, peer name: "
+      OPENAUTO_LOG(info) << "[AndroidBluetoothServer] rfcomm client connected, peer name: "
                          << socket->peerName().toStdString();
 
       connect(socket, &QBluetoothSocket::readyRead, this, &AndroidBluetoothServer::readSocket);
@@ -106,7 +106,7 @@ namespace f1x::openauto::btservice {
   void AndroidBluetoothServer::readSocket() {
     buffer += socket->readAll();
 
-    OPENAUTO_LOG(debug) << "[AndroidBluetoothServer::readSocket] Reading from socket.";
+    OPENAUTO_LOG(info) << "[AndroidBluetoothServer::readSocket] Reading from socket, " << buffer.length() << " bytes";
 
     if (buffer.length() < 4) {
       OPENAUTO_LOG(debug) << "[AndroidBluetoothServer::readSocket] Not enough data, waiting for more.";
@@ -207,6 +207,12 @@ namespace f1x::openauto::btservice {
 
     response.set_security_mode(
         aap_protobuf::service::wifiprojection::message::WifiSecurityMode::WPA2_PERSONAL);
+
+    OPENAUTO_LOG(info) << "[AndroidBluetoothServer] WifiInfoResponse: ssid=" << response.ssid()
+                       << " bssid=" << response.bssid()
+                       << " security=" << response.security_mode()
+                       << " ap_type=" << response.access_point_type()
+                       << " password=" << (response.password().empty() ? "(empty)" : "(set)");
 
     sendMessage(response, 3);
   }
