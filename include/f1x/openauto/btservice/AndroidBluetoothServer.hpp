@@ -70,6 +70,7 @@ namespace f1x::openauto::btservice {
 
 
     const ::std::string getIP4_(const QString intf);
+    const ::std::string getLocalIPv4_();
 
     void DecodeProtoMessage(const std::string &proto_data);
   };

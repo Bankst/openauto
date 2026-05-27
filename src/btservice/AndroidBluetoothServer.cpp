@@ -78,7 +78,7 @@ namespace f1x::openauto::btservice {
 
       aap_protobuf::aaw::WifiVersionRequest versionRequest;
       aap_protobuf::aaw::WifiStartRequest startRequest;
-      startRequest.set_ip_address(getIP4_("wlan0"));
+      startRequest.set_ip_address(getLocalIPv4_());
       startRequest.set_port(5000);
 
       sendMessage(versionRequest, aap_protobuf::aaw::MessageId::WIFI_VERSION_REQUEST);
@@ -238,6 +238,33 @@ namespace f1x::openauto::btservice {
       if (address.ip().protocol() == QAbstractSocket::IPv4Protocol)
         return address.ip().toString().toStdString();
     }
+    return "";
+  }
+
+  const ::std::string AndroidBluetoothServer::getLocalIPv4_() {
+    for (const QNetworkInterface &iface : QNetworkInterface::allInterfaces()) {
+      auto flags = iface.flags();
+      if (!flags.testFlag(QNetworkInterface::IsUp) ||
+          !flags.testFlag(QNetworkInterface::IsRunning) ||
+          flags.testFlag(QNetworkInterface::IsLoopBack))
+        continue;
+      // Skip virtual/tunnel interfaces
+      QString name = iface.name();
+      if (name.startsWith("docker") || name.startsWith("br-") ||
+          name.startsWith("veth") || name.startsWith("tun") ||
+          name.startsWith("tailscale") || name.startsWith("p2p-"))
+        continue;
+      for (const QNetworkAddressEntry &entry : iface.addressEntries()) {
+        if (entry.ip().protocol() == QAbstractSocket::IPv4Protocol &&
+            !entry.ip().isLoopback()) {
+          OPENAUTO_LOG(info) << "[AndroidBluetoothServer] using IP "
+                             << entry.ip().toString().toStdString()
+                             << " from " << name.toStdString();
+          return entry.ip().toString().toStdString();
+        }
+      }
+    }
+    OPENAUTO_LOG(error) << "[AndroidBluetoothServer] no suitable IPv4 address found";
     return "";
   }
 
