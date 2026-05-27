@@ -190,9 +190,13 @@ namespace f1x::openauto::btservice {
 
     if (ssid.isEmpty()) {
       // Same-network fallback: use cached WiFi SSID
-      OPENAUTO_LOG(info) << "[AndroidBluetoothServer] no hostapd.conf — same-network mode, SSID=" << cachedSsid_.toStdString();
+      // Same-network fallback: phone is already on this WiFi. Send SSID
+      // with OPEN security so it doesn't try to re-authenticate.
+      OPENAUTO_LOG(info) << "[AndroidBluetoothServer] same-network mode, SSID=" << cachedSsid_.toStdString();
       response.set_ssid(cachedSsid_.toStdString());
-      response.set_password("");
+      // TODO: replace with QML password prompt or WiFi Direct P2P-GO
+      const char* envPw = std::getenv("BANKS_AA_WIFI_PASSWORD");
+      response.set_password(envPw ? envPw : "");
       response.set_access_point_type(aap_protobuf::service::wifiprojection::message::AccessPointType::STATIC);
     } else {
       response.set_ssid(ssid.toStdString());
