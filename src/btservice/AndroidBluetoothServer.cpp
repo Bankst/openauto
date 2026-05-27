@@ -24,6 +24,7 @@
 #include <QString>
 #include <QtCore/QDataStream>
 #include <QNetworkInterface>
+#include <QProcess>
 #include <iostream>
 #include <google/protobuf/io/zero_copy_stream_impl_lite.h>
 #include <google/protobuf/io/coded_stream.h>
@@ -169,11 +170,21 @@ namespace f1x::openauto::btservice {
     QString password = configuration_->getParamFromFile("/etc/hostapd/hostapd.conf", "wpa_passphrase");
 
     if (ssid.isEmpty()) {
-      // Same-network fallback: tell phone to use its existing connection.
-      // Send empty SSID with STATIC access point type — phone should
-      // skip WiFi join and go straight to TCP on the IP from WifiStartRequest.
+      // Same-network fallback: tell phone we're on its current WiFi.
+      // Get SSID from the active WiFi connection.
       OPENAUTO_LOG(info) << "[AndroidBluetoothServer] no hostapd.conf — same-network mode";
-      response.set_ssid("");
+      QProcess nmcli;
+      nmcli.start("nmcli", {"-t", "-f", "active,ssid", "dev", "wifi"});
+      nmcli.waitForFinished(3000);
+      QString nmOutput = nmcli.readAllStandardOutput().trimmed();
+      for (const auto& line : nmOutput.split('\n')) {
+        if (line.startsWith("yes:")) {
+          ssid = line.mid(4);
+          break;
+        }
+      }
+      OPENAUTO_LOG(info) << "[AndroidBluetoothServer] current WiFi SSID: " << ssid.toStdString();
+      response.set_ssid(ssid.toStdString());
       response.set_password("");
       response.set_access_point_type(aap_protobuf::service::wifiprojection::message::AccessPointType::STATIC);
     } else {
