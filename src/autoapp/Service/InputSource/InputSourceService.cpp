@@ -170,10 +170,6 @@ namespace f1x {
           }
 
           void InputSourceService::onTouchEvent(const projection::TouchEvent &event) {
-            OPENAUTO_LOG(debug) << "[InputSourceService] onTouchEvent: action=" << event.type 
-                                << " pointerCount=" << event.pointers.size() 
-                                << " actionIndex=" << event.actionIndex;
-            
             auto timestamp = std::chrono::duration_cast<std::chrono::microseconds>(
                 std::chrono::high_resolution_clock::now().time_since_epoch());
 
